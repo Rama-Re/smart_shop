@@ -1,18 +1,38 @@
 import json
 
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+from django.contrib.auth.models import BaseUserManager
+
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, username, **extra_fields):
+        """
+        Creates and saves a User with the given username.
+        """
+        if not username:
+            raise ValueError('The Username must be set')
+
+        user = self.model(username=username, **extra_fields)
+        user.save(using=self._db)
+        return user
 
 
 # User Model
-class User(models.Model):
+class User(AbstractUser):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    face_image = models.TextField()
+    face_image_path = models.TextField()
     face_embedding = models.TextField()  # This could be a long string or JSON representation
     username = models.CharField(max_length=100, unique=True)
     gender = models.CharField(max_length=100)
     age = models.CharField(max_length=3)
     balance = models.FloatField()
+
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = []
+    objects = CustomUserManager()
 
     def __str__(self):
         return f"{self.username}"
