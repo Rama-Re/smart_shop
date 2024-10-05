@@ -254,13 +254,11 @@ class DescriptionFilteredProductsView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def post(self, request):
-        product_id = request.data.get('product_id')
-        product = Product.objects.get(id=product_id)
+        description = request.data.get('description')
 
         # Fetch all products from the database
         all_products = Product.objects.all()
 
-        similar_products = recommend_similar_products(target_product, all_products, clothes_info, shoes_info)
         recommended_products = recommend_based_on_text(description, all_products)
         # Use a serializer for the products
         product_list = ProductsShowSerializer(recommended_products, many=True).data
