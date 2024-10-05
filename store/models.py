@@ -154,3 +154,4 @@ class ShoesInfo(models.Model):
 
     def __str__(self):
         return f"Shoes Info for {self.product.product_name}"
+

@@ -108,3 +108,28 @@ class ProductDetailsSerializer(serializers.ModelSerializer):
             return [color.strip() for color in cleaned_colors.split(',')] if cleaned_colors else []
         except Exception as e:
             return []
+
+
+### CartSerializers
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'product_name', 'price', 'image_url']  # Add other fields as needed
+
+
+class CartSerializer(serializers.ModelSerializer):
+    product = ProductSerializer()
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'product', 'size', 'color', 'count']
+
+
+class AddToCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cart
+        fields = ['product_id', 'size', 'color', 'count']
+
+    def validate(self, data):
+        # Add any custom validation logic here
+        return data

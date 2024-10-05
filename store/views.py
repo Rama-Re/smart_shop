@@ -15,58 +15,58 @@ from .recommendation_system import *
 from .authentication import UsernameAuthentication
 
 
-# class RegisterView(APIView):
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             # Extract data from request
-#             first_name = request.data.get('first_name')
-#             last_name = request.data.get('last_name')
-#             image = request.FILES.get('face_image')
-#             face_image_path = request.data.get('face_image_path')
-#             face_embedding = request.data.get('face_embedding')
-#             username = request.data.get('username')
-#
-#             # Check if the username is unique
-#             if User.objects.filter(username=username).exists():
-#                 return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
-#             if image is None:
-#                 return Response({"error": "No face image provided"}, status=status.HTTP_400_BAD_REQUEST)
-#             temp_image_path = default_storage.save(f"temp_images/{image.name}", ContentFile(image.read()))
-#             temp_image_full_path = os.path.join(default_storage.location, temp_image_path)
-#
-#             # Analyze image to get gender and age
-#             objs = DeepFace.analyze(img_path=temp_image_full_path, actions=['age', 'gender'])
-#             age = objs[0]['age']
-#             gender = objs[0]['dominant_gender']
-#
-#             if gender == 'Man':
-#                 gender = 'M'
-#             else:
-#                 gender = 'F'
-#             # Prepare user data
-#             user_data = {
-#                 "first_name": first_name,
-#                 "last_name": last_name,
-#                 "face_image_path": face_image_path,
-#                 "face_embedding": face_embedding,
-#                 "username": username,
-#                 "gender": gender,
-#                 "age": age,
-#                 "balance": 500  # Default balance
-#             }
-#
-#             # Use serializer to validate and save the user
-#             serializer = UserSerializer(data=user_data)
-#             if serializer.is_valid():
-#                 serializer.save()
-#                 if os.path.exists(temp_image_full_path):
-#                     os.remove(temp_image_full_path)
-#                 return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
-#             else:
-#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class RegisterView(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            # Extract data from request
+            first_name = request.data.get('first_name')
+            last_name = request.data.get('last_name')
+            image = request.FILES.get('face_image')
+            face_image_path = request.data.get('face_image_path')
+            face_embedding = request.data.get('face_embedding')
+            username = request.data.get('username')
+
+            # Check if the username is unique
+            if User.objects.filter(username=username).exists():
+                return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            if image is None:
+                return Response({"error": "No face image provided"}, status=status.HTTP_400_BAD_REQUEST)
+            temp_image_path = default_storage.save(f"temp_images/{image.name}", ContentFile(image.read()))
+            temp_image_full_path = os.path.join(default_storage.location, temp_image_path)
+
+            # Analyze image to get gender and age
+            objs = DeepFace.analyze(img_path=temp_image_full_path, actions=['age', 'gender'])
+            age = objs[0]['age']
+            gender = objs[0]['dominant_gender']
+
+            if gender == 'Man':
+                gender = 'M'
+            else:
+                gender = 'F'
+            # Prepare user data
+            user_data = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "face_image_path": face_image_path,
+                "face_embedding": face_embedding,
+                "username": username,
+                "gender": gender,
+                "age": age,
+                "balance": 500  # Default balance
+            }
+
+            # Use serializer to validate and save the user
+            serializer = UserSerializer(data=user_data)
+            if serializer.is_valid():
+                serializer.save()
+                if os.path.exists(temp_image_full_path):
+                    os.remove(temp_image_full_path)
+                return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GetFaceEmbeddingView(APIView):
@@ -292,3 +292,144 @@ class SimilarProductsView(APIView):
         return Response({
             'recommended_products': product_list
         })
+
+
+## CartViews
+class AddToCartView(APIView):
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        user = request.user
+        product_id = request.data.get('product_id')
+        size = request.data.get('size')
+        color = request.data.get('color')
+        count = request.data.get('count')
+
+        try:
+            product = Product.objects.get(id=product_id)
+            # Create a new cart item
+            cart_item = Cart.objects.create(
+                user=user,
+                product=product,
+                size=size,
+                color=color,
+                count=count
+            )
+            return Response({"message": "Product added to cart successfully."}, status=status.HTTP_201_CREATED)
+
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class GetCartView(APIView):
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        user = request.user
+        carts = Cart.objects.filter(user=user)
+        serializer = CartSerializer(carts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class EditCartView(APIView):
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        cart_id = request.data.get('cart_id')
+        try:
+            cart = Cart.objects.get(id=cart_id, user=request.user)
+        except Cart.DoesNotExist:
+            return Response({"error": "Cart not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = AddToCartSerializer(cart, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Cart updated successfully."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteCartView(APIView):
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        cart_id = request.data.get('cart_id')
+
+        try:
+            cart = Cart.objects.get(id=cart_id, user=request.user)
+            cart.delete()
+            return Response({"message": "Cart deleted successfully."}, status=status.HTTP_200_OK)
+
+        except Cart.DoesNotExist:
+            return Response({"error": "Cart not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class CheckoutView(APIView):
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        user = request.user
+        carts = Cart.objects.filter(user=user)
+        subtotal = sum(cart.product.price * cart.count for cart in carts)
+        total_count = sum(cart.count for cart in carts)
+
+        if total_count == 2:
+            sale = 15
+        elif total_count > 2:
+            sale = 25
+        else:
+            sale = 0
+
+        total = subtotal - (subtotal * sale / 100)
+
+        serializer = CartSerializer(carts, many=True)
+
+        return Response({
+            'carts': serializer.data,
+            'subtotal': subtotal,
+            'sale': sale,
+            'total': total
+        }, status=status.HTTP_200_OK)
+
+
+class PayView(APIView):
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        user = request.user
+        carts = Cart.objects.filter(user=user)
+
+        subtotal = sum(cart.product.price * cart.count for cart in carts)
+        total_count = sum(cart.count for cart in carts)
+
+        if total_count == 2:
+            sale = 15
+        elif total_count > 2:
+            sale = 25
+        else:
+            sale = 0
+
+        total = subtotal - (subtotal * sale / 100)
+
+        if user.balance >= total:
+            user.balance -= total
+            user.save()
+
+            carts.delete()
+
+            serializer = CartSerializer(carts, many=True)
+
+            return Response({
+                'carts': serializer.data,
+                'subtotal': subtotal,
+                'sale': sale,
+                'total': total,
+                'message': "Payment successful."
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Insufficient balance."}, status=status.HTTP_400_BAD_REQUEST)
