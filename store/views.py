@@ -5,13 +5,13 @@ from django.core.files.base import ContentFile
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-# from deepface import DeepFace
+from deepface import DeepFace
 from .models import *
 from .serializers import *
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .recommendation_system import recommend_by_gender_and_age
+from .recommendation_system import *
 from .authentication import UsernameAuthentication
 
 
@@ -134,7 +134,6 @@ class ShowProductsView(APIView):
 
         user_gender = user.gender
         user_age = int(user.age)
-        print(user_gender, user_age)
         # Fetch all products from the database
         all_products = Product.objects.all()
 
@@ -153,9 +152,145 @@ class ShowProductView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def post(self, request):
-        first_name = request.data.get('product_id')
-        user_profile = UserSerializer(user).data
+        product_id = request.data.get('product_id')
+
+        try:
+            # Fetch the product by ID
+            product = Product.objects.get(id=product_id)
+            # product.sizes = product.get_sizes()
+            # Serialize the product with its related info
+            product_details = ProductDetailsSerializer(product).data
+            if product.product_type == 'C':
+                clothes_info = ClothesInfo.objects.get(product_id=product_id)
+                clothes_details = ClothesInfoSerializer(clothes_info).data
+                product_details.update(clothes_details)
+            else:
+                shoes_info = ShoesInfo.objects.get(product_id=product_id)
+                shoes_details = ShoesInfoSerializer(shoes_info).data
+                product_details.update(shoes_details)
+
+            return Response({
+                'product_details': product_details
+            }, status=status.HTTP_200_OK)
+
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class EmotionView(APIView):
+    # Use token authentication and ensure the user is authenticated
+    authentication_classes = [JWTAuthentication]
+    def post(self, request, *args, **kwargs):
+        try:
+            image = request.FILES.get('face_image')
+
+            if image is None:
+                return Response({"error": "No face image provided"}, status=status.HTTP_400_BAD_REQUEST)
+            temp_image_path = default_storage.save(f"temp_images/{image.name}", ContentFile(image.read()))
+            temp_image_full_path = os.path.join(default_storage.location, temp_image_path)
+
+            # Analyze image to get gender and age
+            objs = DeepFace.analyze(img_path=temp_image_full_path, actions=['emotion'])
+            emotion = objs[0]['dominant_emotion']
+
+            user_data = {
+                "emotion": emotion
+            }
+
+            if os.path.exists(temp_image_full_path):
+                os.remove(temp_image_full_path)
+                return Response(user_data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({"message": "couldn't get face emotion"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class FilteredProductsView(APIView):
+    # Use token authentication and ensure the user is authenticated
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+
+        gender = request.data.get('gender')
+        age = request.data.get('age')
+        # Fetch all products from the database
+        all_products = Product.objects.all()
+
+        # Call the recommendation function to filter products by gender and age
+        recommended_products = filter_by_gender_and_age(gender, age, all_products)
+        # Use a serializer for the products
+        product_list = ProductsShowSerializer(recommended_products, many=True).data
 
         return Response({
-            'user_profile': user_profile
+            'recommended_products': product_list
+        })
+
+
+class LowerPriceProductsView(APIView):
+    # Use token authentication and ensure the user is authenticated
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        product_id = request.data.get('product_id')
+        product = Product.objects.get(id=product_id)
+        # Fetch all products from the database
+        all_products = Product.objects.all()
+        recommended_products = recommend_lower_priced_products(product, all_products)
+        # Use a serializer for the products
+        product_list = ProductsShowSerializer(recommended_products, many=True).data
+
+        return Response({
+            'recommended_products': product_list
+        })
+
+
+class DescriptionFilteredProductsView(APIView):
+    # Use token authentication and ensure the user is authenticated
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        product_id = request.data.get('product_id')
+        product = Product.objects.get(id=product_id)
+
+        # Fetch all products from the database
+        all_products = Product.objects.all()
+
+        similar_products = recommend_similar_products(target_product, all_products, clothes_info, shoes_info)
+        recommended_products = recommend_based_on_text(description, all_products)
+        # Use a serializer for the products
+        product_list = ProductsShowSerializer(recommended_products, many=True).data
+
+        return Response({
+            'recommended_products': product_list
+        })
+
+
+class SimilarProductsView(APIView):
+    # Use token authentication and ensure the user is authenticated
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        clothes_info = None
+        shoes_info = None
+        product_id = request.data.get('product_id')
+        product = Product.objects.get(id=product_id)
+
+        if product.product_type == 'C':
+            clothes_info = product.clothesinfo
+        else:
+            shoes_info = product.shoesinfo
+        # Fetch all products from the database
+        all_products = Product.objects.all()
+
+        similar_products = recommend_similar_products(product, all_products, clothes_info, shoes_info)
+
+        product_list = ProductsShowSerializer(similar_products, many=True).data
+
+        return Response({
+            'recommended_products': product_list
         })

@@ -40,7 +40,7 @@ def load_data(apps, schema_editor):
                 sizes=row[9],  # Convert string representation of list to list
                 colors=row[6],  # Convert string representation of list to list, 'colors'
                 description=row[10],
-                pattern='[' + row[13] + ']',
+                pattern=row[13],
                 nice_to_know=row[14]  # Assuming this column may have data
             )
 
