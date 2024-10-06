@@ -38,11 +38,13 @@ def size_similarity(product1, product2, weight):
 # Overall similarity calculation for products
 def overall_similarity(product1, product2, clothes_info1=None, clothes_info2=None, shoes_info1=None, shoes_info2=None):
     weights = {
-        'gender': 0.05, 'category': 0.10, 'product_type': 0.10, 'age_group': 0.05,
-        'name': 0.05, 'description': 0.15, 'pattern': 0.05, 'nice_to_know': 0.05,
-        'sizes': 0.05, 'colors': 0.05, 'fit': 0.05, 'length': 0.05, 'sleeve_length': 0.05, 'neckline': 0.05,
-        'style': 0.05,
-        'heel_height': 0.05, 'additional_description': 0.10, 'footwear_style': 0.05
+        'gender': 0.06, 'category': 0.06, 'product_type': 0.06, 'age_group': 0.06,
+        'name': 0.06, 'description': 0.16, 'pattern': 0.06, 'nice_to_know': 0.06,
+        'sizes': 0.06, 'colors': 0.06,
+
+        'fit': 0.06, 'length': 0.06, 'sleeve_length': 0.06, 'neckline': 0.06, 'style': 0.06,
+
+        'heel_height': 0.1, 'additional_description': 0.1, 'footwear_style': 0.1
     }
 
     gender_sim = categorical_similarity(product1.gender, product2.gender, weights['gender'])

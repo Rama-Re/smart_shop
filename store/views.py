@@ -303,19 +303,26 @@ class AddToCartView(APIView):
         product_id = request.data.get('product_id')
         size = request.data.get('size')
         color = request.data.get('color')
-        count = request.data.get('count')
+        # count = request.data.get('count')
 
         try:
             product = Product.objects.get(id=product_id)
-            # Create a new cart item
-            cart_item = Cart.objects.create(
-                user=user,
-                product=product,
-                size=size,
-                color=color,
-                count=count
-            )
-            return Response({"message": "Product added to cart successfully."}, status=status.HTTP_201_CREATED)
+            try:
+                cart = Cart.objects.get(product_id=product_id, user=request.user, size=size, color=color)
+            except Cart.DoesNotExist:
+                # Create a new cart item
+                cart_item = Cart.objects.create(
+                    user=user,
+                    product=product,
+                    size=size,
+                    color=color,
+                    count=1
+                )
+                return Response({"message": "Product added to cart successfully."}, status=status.HTTP_201_CREATED)
+
+            cart.count = cart.count + 1
+            cart.save()
+            return Response({"message": "Cart updated successfully."}, status=status.HTTP_200_OK)
 
         except Product.DoesNotExist:
             return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
