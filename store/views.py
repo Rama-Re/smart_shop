@@ -115,7 +115,6 @@ class UserProfileView(APIView):
     def get(self, request):
         # Get the user from the request token
         user = request.user
-        print(user)
 
         user_profile = UserSerializer(user).data
 
@@ -236,11 +235,20 @@ class LowerPriceProductsView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def post(self, request):
+        clothes_info = None
+        shoes_info = None
         product_id = request.data.get('product_id')
         product = Product.objects.get(id=product_id)
+
+        if product.product_type == 'C':
+            clothes_info = product.clothesinfo
+        else:
+            shoes_info = product.shoesinfo
         # Fetch all products from the database
         all_products = Product.objects.all()
-        recommended_products = recommend_lower_priced_products(product, all_products)
+        similar_products = recommend_similar_products(product, all_products, clothes_info, shoes_info)
+
+        recommended_products = recommend_lower_priced_products(product, similar_products)
         # Use a serializer for the products
         product_list = ProductsShowSerializer(recommended_products, many=True).data
 

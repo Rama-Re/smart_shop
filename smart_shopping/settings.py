@@ -97,7 +97,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'smart_shop',
         'USER': 'root',
-        'PASSWORD': 'rama@33459297',
+        'PASSWORD': '',
         'Host': '127.0.0.1',
         'PORT': '3306',
         'OPTIONS': {

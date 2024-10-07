@@ -9,7 +9,6 @@ def categorical_similarity(value1, value2, weight):
 
 def text_similarity(text1, text2, weight):
     vectorizer = TfidfVectorizer()
-    print(text1,'**********', text2)
     if text1 == text2 == "": return weight
     tfidf_matrix = vectorizer.fit_transform([text1, text2])
     sim = cosine(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
@@ -100,9 +99,9 @@ def recommend_similar_products(target_product, all_products, clothes_info=None, 
 
 # Recommend products with lower prices
 def recommend_lower_priced_products(target_product, all_products):
-    lower_priced_products = [product for product in all_products if product.price < target_product.price]
-    lower_priced_products.sort(key=lambda product: product.price)
-    return lower_priced_products
+    lower_priced_products = [product for product in all_products if product.price <= target_product.price]
+    # lower_priced_products.sort(key=lambda product: product.price)
+    return lower_priced_products[1:]
 
 
 # Recommend based on text similarity
